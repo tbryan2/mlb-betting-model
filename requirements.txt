@@ -9,3 +9,4 @@ nfl_data_py
 seaborn
 transformers
 scattertext
+pybaseball
