@@ -31,6 +31,8 @@ for year in range(2015, 2022):
         try:
             # Retrieve the batting stats for that day
             data = batting_stats_range(date, date)
+            # Add the date to the data DataFrame
+            data['Date'] = date
             # Append the data to the dataframe
             df = pd.concat([df, data])
         except IndexError:
@@ -43,7 +45,7 @@ for year in range(2015, 2022):
         if current_date == last_day_of_month:
             # Output the data to a local PostgreSQL server
             table_name = f"baseball_stats_{year}_{current_date.month}"
-            store_data_in_postgresql(df, mlb_dailystats, conn_str)
+            store_data_in_postgresql(df, table_name, conn_str)
 
             # Print a warning if the month is empty
             if df.empty:
