@@ -6,6 +6,7 @@ import os
 import re
 from sqlalchemy import create_engine
 
+
 def preprocess_eva_file(file_path):
     '''
     Preprocess the EVA file to prepare for reading into a DataFrame
@@ -17,6 +18,12 @@ def preprocess_eva_file(file_path):
     current_game_id = None
     home_team = None
     away_team = None
+    daynight = None
+    temp = None
+    winddirection = None
+    windspeed = None
+    precip = None
+    sky = None
 
     for line in raw_data:
         if line.startswith('id'):
@@ -25,14 +32,29 @@ def preprocess_eva_file(file_path):
             away_team = line.strip().split(',')[2]
         elif line.startswith('info') and 'hometeam' in line:
             home_team = line.strip().split(',')[2]
+        elif line.startswith('info') and 'daynight' in line:
+            daynight = line.strip().split(',')[2]
+        elif line.startswith('info') and 'temp' in line:
+            temp = line.strip().split(',')[2]
+        elif line.startswith('info') and 'winddir' in line:
+            winddirection = line.strip().split(',')[2]
+        elif line.startswith('info') and 'windspeed' in line:
+            windspeed = line.strip().split(',')[2]
+        elif line.startswith('info') and 'precip' in line:
+            precip = line.strip().split(',')[2]
+        elif line.startswith('info') and 'sky' in line:
+            sky = line.strip().split(',')[2]
         elif line.startswith('play'):
             play_data = line.strip().split(',')
             play_data.insert(1, current_game_id)
             play_data.insert(2, home_team)
             play_data.insert(3, away_team)
+            play_data.extend(
+                [daynight, temp, winddirection, windspeed, precip, sky])
             processed_data.append(play_data)
 
     return processed_data
+
 
 def read_eva_to_dataframe(file_path):
     '''
@@ -40,18 +62,20 @@ def read_eva_to_dataframe(file_path):
     '''
     processed_data = preprocess_eva_file(file_path)
 
-    df = pd.DataFrame(processed_data, columns=['event', 'game_id', 'home_team', 'away_team', 
-                                               'inning', 'home_away', 'player_id', 'count', 
-                                               'pitches', 'event_description'])
+    df = pd.DataFrame(processed_data, columns=['event', 'game_id', 'home_team', 'away_team',
+                                               'inning', 'home_away', 'player_id', 'count',
+                                               'pitches', 'event_description',
+                                               'daynight', 'temp', 'winddirection', 'windspeed', 'precip', 'sky'])
 
-    df['batting_team'] = df.apply(lambda row: row['home_team'] if row['home_away'] == '1' else row['away_team'], axis=1)
+    df['batting_team'] = df.apply(
+        lambda row: row['home_team'] if row['home_away'] == '1' else row['away_team'], axis=1)
 
     df['date'] = df['game_id'].str[3:11]
     df['year'] = df['game_id'].str[3:7]
 
     df['year'] = df['year'].astype('int64')
     df['date'] = df['date'].astype('int64')
-    
+
     df = df[~df['event_description'].str.startswith('WP')]
     df = df[~df['event_description'].str.startswith('NP')]
     df = df[~df['event_description'].str.startswith('DI')]
@@ -138,7 +162,7 @@ for year in years:
 # Combine all rosters into a single DataFrame
 combined_rosters = pd.concat(all_rosters, ignore_index=True)
 
-# Replace these values with your PostgreSQL connection information
+# Database connection parameters
 db_user = "postgres"
 db_password = "1789"
 db_name = "baseball"
