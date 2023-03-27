@@ -152,7 +152,7 @@ years = range(2012, 2022 + 1)
 for year in years:
     for team in teams:
         try:
-            file_path = f'data/{year}eve/{team}{year}.ROS'
+            file_path = f'data/event_logs/{year}eve/{team}{year}.ROS'
             roster = read_ros_to_dataframe(file_path)
             roster['year'] = year  # Add a 'year' column to the roster DataFrame
             all_rosters.append(roster)
@@ -179,11 +179,11 @@ for year in years:
     for team in tqdm.tqdm(teams):
         try:
             # Read the EVA file into a DataFrame
-            file_path = f'data/{year}eve/{year}{team}.EVA'
+            file_path = f'data/event_logs/{year}eve/{year}{team}.EVA'
             team_data = read_eva_to_dataframe(file_path)
         except FileNotFoundError:
             # Read the EVN file into a DataFrame
-            file_path = f'data/{year}eve/{year}{team}.EVN'
+            file_path = f'data/event_logs/{year}eve/{year}{team}.EVN'
             team_data = read_eva_to_dataframe(file_path)
 
         # Apply the classification function to the 'event' column to create a new 'outcome' column
@@ -204,4 +204,4 @@ for year in years:
     df = df.drop_duplicates()
 
     # Append the data to the local PostgreSQL database
-    df.to_sql('batter_statistics', engine, if_exists='append', index=False)
+    df.to_sql('test_batter_statistics', engine, if_exists='append', index=False)

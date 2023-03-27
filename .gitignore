@@ -130,3 +130,6 @@ dmypy.json
 
 # ignore anything in the data folder
 data/
+
+# ignore anything in the config folder
+config/

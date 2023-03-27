@@ -1,59 +1,56 @@
-import pandas as pd
+# Dependencies
 import os
-
-def extract_game_outcome(file_path):
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-
-    game_outcome = {}
-    game_id = ""
-    visteam = ""
-    hometeam = ""
-    home_score = 0
-    vis_score = 0
-
-    for line in lines:
-        tokens = line.strip().split(',')
-
-        if tokens[0] == "id":
-            game_id = tokens[1]
-
-        if tokens[0] == "info":
-            if tokens[1] == "visteam":
-                visteam = tokens[2].strip('"')
-            elif tokens[1] == "hometeam":
-                hometeam = tokens[2].strip('"')
-            elif tokens[1] == "home_score":
-                home_score = int(tokens[2])
-            elif tokens[1] == "vis_score":
-                vis_score = int(tokens[2])
-
-    winner = hometeam if home_score > vis_score else visteam
-    game_outcome = {
-        "game_id": game_id,
-        "visteam": visteam,
-        "hometeam": hometeam,
-        "home_score": home_score,
-        "vis_score": vis_score,
-        "winner": winner
-    }
-
-    return game_outcome
+import pandas as pd
+from sqlalchemy import create_engine
 
 
-game_outcomes_list = []
+def extract_final_scores(file_path):
+    # Define the columns you want to extract
+    cols_to_extract = ["date", "away_team", "home_team",
+                       "away_team_score", "home_team_score"]
+
+    # Read the CSV file and extract the final scores
+    df = pd.read_csv(file_path, usecols=[
+                     0, 3, 6, 9, 10], header=None, names=cols_to_extract)
+
+    # Convert the date column to a datetime object
+    df['date'] = pd.to_datetime(df['date'], format='%Y%m%d')
+
+    # Add a game_id column
+    df['game_id'] = df['home_team'] + df['date'].dt.strftime('%Y%m%d') + '0'
+
+    # Drop the date column
+    df.drop('date', axis=1, inplace=True)
+
+    return df
+
+# Loop through the years and extract the final scores
+final_scores_list = []
+
 years = range(2012, 2022 + 1)
 
-data_dir = 'data/'
+game_logs_folder = 'data/game_logs'
 
 for year in years:
-    year_dir = os.path.join(data_dir, str(year) + 'eve')
-    event_files = [os.path.join(year_dir, f) for f in os.listdir(
-        year_dir) if f.endswith('.EVA') or f.endswith('.EVN')]
+    game_logs_file = os.path.join(game_logs_folder, 'gl' + str(year) + '.txt')
+    if os.path.isfile(game_logs_file):
+        final_scores_list.append(extract_final_scores(game_logs_file))
 
-    for event_file in event_files:
-        game_outcomes_list.append(extract_game_outcome(event_file))
+# Concatenate the list of dataframes into a single dataframe
+final_scores_df = pd.concat(final_scores_list)
 
-game_outcomes_df = pd.DataFrame(game_outcomes_list)
+# Database connection parameters
+# Database connection parameters
+db_user = "postgres"
+db_password = "1789"
+db_name = "baseball"
+db_host = "localhost"
+db_port = "5433"
 
-print(game_outcomes_df.head())
+# Connect to the PostgreSQL database
+engine = create_engine(
+    f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
+
+# Append the data to the local PostgreSQL database
+final_scores_df.to_sql(
+    'final_scores', engine, if_exists='append', index=False)
