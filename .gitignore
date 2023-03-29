@@ -133,3 +133,6 @@ data/
 
 # ignore anything in the config folder
 config/
+
+# custom
+weather/secrets.py
