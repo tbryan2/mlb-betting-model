@@ -133,3 +133,6 @@ data/
 
 # ignore anything in the config folder
 config/
+
+# custom
+**/mlbbetting/configs/secrets.py

@@ -5,6 +5,7 @@ import tqdm
 import os
 import re
 from sqlalchemy import create_engine
+from mlbbetting.configs import get_config
 
 
 def preprocess_eva_file(file_path):
@@ -54,7 +55,6 @@ def preprocess_eva_file(file_path):
             processed_data.append(play_data)
 
     return processed_data
-
 
 def read_eva_to_dataframe(file_path):
     '''
@@ -139,69 +139,68 @@ def read_ros_to_dataframe(file_path):
 
     return df
 
-# List the teams in the league
-teams = ['ANA', 'ARI', 'ATL', 'BAL', 'BOS', 'CHN', 'CHA', 'CIN', 'CLE', 'COL', 
-         'DET', 'HOU', 'KCA', 'LAN', 'MIA', 'MIL', 'MIN', 'NYN', 'NYA', 'OAK', 'PHI', 
-         'PIT', 'SDN', 'SFN', 'SEA', 'SLN', 'TBA', 'TEX', 'TOR', 'WAS']
 
-# Create a single roster DataFrame for all teams
-all_rosters = []
+# Main logic
+if __name__ == "__main__":
 
-years = range(2012, 2022 + 1)
+    # List the teams in the league
+    teams = ['ANA', 'ARI', 'ATL', 'BAL', 'BOS', 'CHN', 'CHA', 'CIN', 'CLE', 'COL', 
+            'DET', 'HOU', 'KCA', 'LAN', 'MIA', 'MIL', 'MIN', 'NYN', 'NYA', 'OAK', 'PHI', 
+            'PIT', 'SDN', 'SFN', 'SEA', 'SLN', 'TBA', 'TEX', 'TOR', 'WAS']
 
-for year in years:
-    for team in teams:
-        try:
-            file_path = f'data/event_logs/{year}eve/{team}{year}.ROS'
-            roster = read_ros_to_dataframe(file_path)
-            roster['year'] = year  # Add a 'year' column to the roster DataFrame
-            all_rosters.append(roster)
-        except FileNotFoundError:
-            print(f"Roster file not found for team {team} in {year}")
+    # Create a single roster DataFrame for all teams
+    all_rosters = []
 
-# Combine all rosters into a single DataFrame
-combined_rosters = pd.concat(all_rosters, ignore_index=True)
+    years = range(2012, 2022 + 1)
 
-# Database connection parameters
-db_user = "postgres"
-db_password = "1789"
-db_name = "baseball"
-db_host = "localhost"
-db_port = "5433"
+    for year in years:
+        for team in teams:
+            try:
+                file_path = f'data/event_logs/{year}eve/{team}{year}.ROS'
+                roster = read_ros_to_dataframe(file_path)
+                roster['year'] = year  # Add a 'year' column to the roster DataFrame
+                all_rosters.append(roster)
+            except FileNotFoundError:
+                print(f"Roster file not found for team {team} in {year}")
 
-# Connect to the PostgreSQL database
-engine = create_engine(
-    f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
+    # Combine all rosters into a single DataFrame
+    combined_rosters = pd.concat(all_rosters, ignore_index=True)
 
-for year in years:
-    data = []
+    config = get_config(True)
 
-    for team in tqdm.tqdm(teams):
-        try:
-            # Read the EVA file into a DataFrame
-            file_path = f'data/event_logs/{year}eve/{year}{team}.EVA'
-            team_data = read_eva_to_dataframe(file_path)
-        except FileNotFoundError:
-            # Read the EVN file into a DataFrame
-            file_path = f'data/event_logs/{year}eve/{year}{team}.EVN'
-            team_data = read_eva_to_dataframe(file_path)
+    # Connect to the PostgreSQL database
+    engine = create_engine(
+        f"postgresql://{config.db_user}:{config.db_password}@{config.db_host}:{config.db_port}/{config.db_name}")
 
-        # Apply the classification function to the 'event' column to create a new 'outcome' column
-        team_data['outcome'] = team_data['event_description'].apply(
-            classify_outcome)
+    for year in years:
+        data = []
 
-        # Merge the all_team_rosters DataFrame with the team_data DataFrame using a left join
-        team_data = pd.merge(team_data, combined_rosters, on=[
-                             'player_id', 'batting_team', 'year'], how='left')
+        for team in tqdm.tqdm(teams):
+            try:
+                # Read the EVA file into a DataFrame
+                file_path = f'data/event_logs/{year}eve/{year}{team}.EVA'
+                team_data = read_eva_to_dataframe(file_path)
+            except FileNotFoundError:
+                # Read the EVN file into a DataFrame
+                file_path = f'data/event_logs/{year}eve/{year}{team}.EVN'
+                team_data = read_eva_to_dataframe(file_path)
 
-        # Concatenate each game's DataFrame to the data list
-        data.append(team_data)
+            # Apply the classification function to the 'event' column to create a new 'outcome' column
+            team_data['outcome'] = team_data['event_description'].apply(
+                classify_outcome)
 
-    # Combine all the DataFrames in the data list into a single DataFrame
-    df = pd.concat(data, ignore_index=True)
+            # Merge the all_team_rosters DataFrame with the team_data DataFrame using a left join
+            team_data = pd.merge(team_data, combined_rosters, on=[
+                                'player_id', 'batting_team', 'year'], how='left')
 
-    # Drop duplicate records
-    df = df.drop_duplicates()
+            # Concatenate each game's DataFrame to the data list
+            data.append(team_data)
 
-    # Append the data to the local PostgreSQL database
-    df.to_sql('test_batter_statistics', engine, if_exists='append', index=False)
+        # Combine all the DataFrames in the data list into a single DataFrame
+        df = pd.concat(data, ignore_index=True)
+
+        # Drop duplicate records
+        df = df.drop_duplicates()
+
+        # Append the data to the local PostgreSQL database
+        df.to_sql('test_batter_statistics', engine, if_exists='append', index=False)
