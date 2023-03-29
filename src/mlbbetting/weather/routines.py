@@ -2,8 +2,7 @@ from __future__ import annotations
 from pyowm import OWM
 from pyowm.weatherapi25.weather import Weather
 from pyowm.weatherapi25.weather_manager import WeatherManager
-import secrets as mysecrets
-
+from mlbbetting import configs
 
 def get_weather_by_zip(zipcode: str) -> Weather:
     """Get the current weather by the specified zip code"""
@@ -17,7 +16,9 @@ def get_weather_by_zip(zipcode: str) -> Weather:
 def _get_weather_manager() -> WeatherManager:
     """Get a new weather manager object"""
 
-    owm = OWM(mysecrets.WEATHER_API_KEY)
+    config = configs.get_config(True)
+
+    owm = OWM(config.weather_api_key)
     mgr = owm.weather_manager()
 
     return mgr

@@ -135,4 +135,4 @@ data/
 config/
 
 # custom
-weather/secrets.py
+**/mlbbetting/configs/secrets.py

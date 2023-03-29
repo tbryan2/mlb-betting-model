@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 from sqlalchemy import create_engine
+from mlbbetting import configs
 
 
 def extract_pitchers(file_path):
@@ -59,32 +60,32 @@ def extract_pitchers(file_path):
 
 
 
+# Main logic...
+if __name__ == "__main__":
 
-data_dir = 'data/event_logs'
+    data_dir = 'data/event_logs'
 
-starting_pitchers_list = []
+    starting_pitchers_list = []
 
-years = range(2012, 2022 + 1)
+    years = range(2012, 2022 + 1)
 
-for year in years:
-    year_dir = os.path.join(data_dir, str(year) + 'eve')
-    event_files = [os.path.join(year_dir, f) for f in os.listdir(
-        year_dir) if f.endswith('.EVA') or f.endswith('.EVN')]
-    for event_file in event_files:
-        starting_pitchers_list.extend(extract_pitchers(event_file))
+    for year in years:
+        year_dir = os.path.join(data_dir, str(year) + 'eve')
+        event_files = [os.path.join(year_dir, f) for f in os.listdir(
+            year_dir) if f.endswith('.EVA') or f.endswith('.EVN')]
+        for event_file in event_files:
+            starting_pitchers_list.extend(extract_pitchers(event_file))
 
-starting_pitchers_df = pd.DataFrame(starting_pitchers_list)
+    starting_pitchers_df = pd.DataFrame(starting_pitchers_list)
 
-# Database connection parameters
-db_user = "postgres"
-db_password = "1789"
-db_name = "baseball"
-db_host = "localhost"
-db_port = "5433"
+    config = configs.get_config(True)
 
-# Connect to the PostgreSQL database
-engine = create_engine(
-    f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
+    # Connect to the PostgreSQL database
+    engine = create_engine(
+        f"postgresql://{config.db_user}:{config.db_password}@{config.db_host}:{config.db_port}/{config.db_name}")
 
-# Append the data to the local PostgreSQL database
-starting_pitchers_df.to_sql('pitchers', engine, if_exists='append', index=False)
+    # Append the data to the local PostgreSQL database
+    starting_pitchers_df.to_sql('pitchers', engine, if_exists='append', index=False)
+
+
+
