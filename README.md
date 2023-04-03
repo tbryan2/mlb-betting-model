@@ -11,3 +11,10 @@ Since I made this project into a proper python package, you'll have to run the f
 cd src
 python -m mlbbetting.preprocessing.batter_preprocessing
 ```
+
+
+## Get today's lineups
+
+```sh
+python -m mlbbetting.lineups
+```
